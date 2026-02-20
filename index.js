@@ -24,7 +24,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { SSEServerTransport } from "./sse-transport.js";
 
-const SERVER_VERSION = "2.2.0";
+const SERVER_VERSION = "2.3.0";
 
 // ─────────────────────────────────────────────
 // Mock Data
@@ -452,7 +452,25 @@ function createMCPServer() {
 // ─────────────────────────────────────────────
 
 const app = express();
-app.use(cors({ origin: "*", methods: ["GET", "POST"], allowedHeaders: ["Content-Type", "Accept"] }));
+// Full CORS for browser-based clients (SSE + fetch POST)
+const corsOptions = {
+  origin: "*",
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Accept", "Cache-Control", "X-Requested-With"],
+  credentials: false,
+};
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // handle preflight
+
+// Set permissive CSP so browsers allow SSE connections from any origin
+app.use((req, res, next) => {
+  res.setHeader("Content-Security-Policy", "connect-src *; default-src * 'unsafe-inline' 'unsafe-eval' data: blob:");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, Cache-Control");
+  next();
+});
+
 // NOTE: Do NOT use express.json() globally - it consumes req stream before MCP SDK can read it
 
 const transports = new Map();
