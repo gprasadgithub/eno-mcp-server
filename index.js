@@ -271,25 +271,38 @@ app.get("/sse", async (req, res) => {
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
+  res.setHeader("Access-Control-Allow-Origin", "*");
   res.flushHeaders();
 
   const transport = new SSEServerTransport("/message", res);
   transports.set(transport.sessionId, transport);
-  console.log(`[SSE] Session: ${transport.sessionId}`);
+  console.log(`[SSE] Session created: ${transport.sessionId}`);
 
   res.on("close", () => {
-    console.log(`[SSE] Closed: ${transport.sessionId}`);
+    console.log(`[SSE] Connection closed: ${transport.sessionId}`);
     transports.delete(transport.sessionId);
   });
 
-  await createMCPServer().connect(transport);
+  try {
+    await createMCPServer().connect(transport);
+    console.log(`[SSE] MCP connected: ${transport.sessionId}`);
+  } catch (err) {
+    console.error(`[SSE] Connect error:`, err.message);
+  }
+});
+
+// mcp-remote POSTs to /sse during http-first probe
+app.post("/sse", (req, res) => {
+  console.log(`[SSE] POST probe — returning 405`);
+  res.status(405).set("Allow", "GET").json({ error: "SSE is GET only. POST messages to /message?sessionId=<id>" });
 });
 
 app.post("/message", async (req, res) => {
   const sessionId = req.query.sessionId;
+  console.log(`[POST] session=${sessionId} active=${transports.size}`);
   const transport = transports.get(sessionId);
   if (!transport) {
-    console.error(`[POST] Session not found: ${sessionId}`);
+    console.error(`[POST] Not found: ${sessionId}. Known: ${[...transports.keys()].join(", ")}`);
     return res.status(404).json({ error: "Session not found" });
   }
   try {
@@ -299,6 +312,7 @@ app.post("/message", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // ─────────────────────────────────────────────
 // Start
