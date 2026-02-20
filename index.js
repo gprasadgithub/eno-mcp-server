@@ -21,6 +21,7 @@
 import express from "express";
 import cors from "cors";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 
 const SERVER_VERSION = "2.1.0";
@@ -184,7 +185,7 @@ function createMCPServer() {
     { capabilities: { tools: {} } }
   );
 
-  server.setRequestHandler({ method: "tools/list" }, async () => ({
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: [
       {
         name: "get_balance",
@@ -233,7 +234,7 @@ function createMCPServer() {
     ],
   }));
 
-  server.setRequestHandler({ method: "tools/call" }, async (request) => {
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     const handlers = {
       get_balance:      handleGetBalance,
