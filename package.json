@@ -1,7 +1,7 @@
 {
   "name": "eno-mcp-server",
-  "version": "1.0.0",
-  "description": "Capital One Eno MCP Server — SSE transport for remote hosting",
+  "version": "2.0.0",
+  "description": "Capital One Eno MCP Server — StreamableHTTP transport for remote hosting",
   "type": "module",
   "main": "index.js",
   "scripts": {
