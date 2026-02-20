@@ -267,12 +267,6 @@ app.get("/health", (_req, res) => {
 
 app.get("/sse", async (req, res) => {
   console.log(`[SSE] New connection from ${req.ip}`);
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.flushHeaders();
 
   const transport = new SSEServerTransport("/message", res);
   transports.set(transport.sessionId, transport);
