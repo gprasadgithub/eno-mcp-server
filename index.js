@@ -257,7 +257,7 @@ function createMCPServer() {
 
 const app = express();
 app.use(cors({ origin: "*", methods: ["GET", "POST"], allowedHeaders: ["Content-Type", "Accept"] }));
-app.use(express.json());
+// NOTE: Do NOT use express.json() globally - it consumes req stream before MCP SDK can read it
 
 const transports = new Map();
 
