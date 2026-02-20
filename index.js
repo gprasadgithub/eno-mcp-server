@@ -22,7 +22,7 @@ import express from "express";
 import cors from "cors";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { SSEServerTransport } from "./sse-transport.js";
 
 const SERVER_VERSION = "2.1.0";
 
@@ -268,11 +268,26 @@ app.get("/health", (_req, res) => {
 app.get("/sse", async (req, res) => {
   console.log(`[SSE] New connection from ${req.ip}`);
 
+  // Keep Railway proxy from closing idle SSE connections
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+
   const transport = new SSEServerTransport("/message", res);
   transports.set(transport.sessionId, transport);
   console.log(`[SSE] Session created: ${transport.sessionId}`);
 
+  // Heartbeat every 15s to keep Railway proxy alive
+  const heartbeat = setInterval(() => {
+    if (!res.writableEnded) {
+      res.write(": ping\n\n");
+      console.log(`[SSE] Heartbeat: ${transport.sessionId}`);
+    }
+  }, 15000);
+
   res.on("close", () => {
+    clearInterval(heartbeat);
     console.log(`[SSE] Connection closed: ${transport.sessionId}`);
     transports.delete(transport.sessionId);
   });
