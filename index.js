@@ -242,25 +242,44 @@ app.get("/health", (_req, res) => {
 
 app.get("/sse", async (req, res) => {
   console.log(`[SSE] New connection from ${req.ip}`);
-  const transport = new SSEServerTransport("/message", res);
-  transports.set(transport.sessionId, transport);
 
-  res.on("close", () => {
-    console.log(`[SSE] Connection closed: ${transport.sessionId}`);
-    transports.delete(transport.sessionId);
-  });
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  const transport = new SSEServerTransport("/message", res);
+  const sessionId = transport.sessionId;
+  transports.set(sessionId, transport);
+  console.log(`[SSE] Session created: ${sessionId}`);
 
   const server = createMCPServer();
+
+  res.on("close", () => {
+    console.log(`[SSE] Connection closed: ${sessionId}`);
+    transports.delete(sessionId);
+  });
+
   await server.connect(transport);
 });
 
 app.post("/message", async (req, res) => {
   const sessionId = req.query.sessionId;
+  console.log(`[POST] Message for session: ${sessionId}`);
+
   const transport = transports.get(sessionId);
   if (!transport) {
+    console.error(`[POST] Session not found: ${sessionId}`);
     return res.status(404).json({ error: "Session not found" });
   }
-  await transport.handlePostMessage(req, res);
+
+  try {
+    await transport.handlePostMessage(req, res);
+  } catch (err) {
+    console.error(`[POST] Error handling message:`, err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
